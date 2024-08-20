@@ -1,0 +1,57 @@
+# Логи
+logs
+*.log
+npm-debug.log*
+
+# Рантайм данные
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Директория с зависимостями
+node_modules
+
+# Файлы конфигурации IDE
+.idea
+.vscode
+*.swp
+*.swo
+*.sublime-workspace
+
+# Операционные системы
+.DS_Store
+Thumbs.db
+
+# Каталоги сборки
+dist
+tmp
+out
+
+# env файлы
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Дампы
+*.heapdump
+
+# Вспомогательные файлы системы контроля версий
+.git
+hg
+svn
+
+# Часто игнорируемые конфиги
+*.npmrc
+*.yarnrc
+*.ini
+
+# Скомпилированные файлы
+*.pyc
+*.pyo
+*.exe
+*.dll
+*.so
+*.dylib
