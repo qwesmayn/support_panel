@@ -4,6 +4,7 @@ import { useUserInfo } from "../../../../hooks/useUserInfo";
 
 interface MessagesBlockProps {
   messages: IMessage[];
+  onMessageRead: (messageId: string) => void;
 }
 
 const MessagesBlock: FC<MessagesBlockProps> = ({ messages }) => {
@@ -13,10 +14,12 @@ const MessagesBlock: FC<MessagesBlockProps> = ({ messages }) => {
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+  
 
   return (
     <div>
       {messages.map((message) => (
+        
         <div
           key={message._id}
           className={`flex justify-${

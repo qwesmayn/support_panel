@@ -21,6 +21,7 @@ const UserMain: FC = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isCreateTicketModalOpen, setIsCreateTicketModalOpen] =
     useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     if (userJwtInfo?.userInfo && !isLoading) {
@@ -46,32 +47,27 @@ const UserMain: FC = () => {
       });
 
       newSocket.on("ticket:update", (updatedTicket: ITicket) => {
-        console.log(updatedTicket);
-
-        setTickets((prevTickets) => {
-          // Проверяем, существует ли тикет в текущем списке
-          const ticketExists = prevTickets.some(ticket => ticket._id === updatedTicket._id);
-          if (ticketExists) {
-            // Обновляем существующий тикет
-            return prevTickets.map((ticket) =>
-              ticket._id === updatedTicket._id ? updatedTicket : ticket
-            );
-          } else {
-            // Добавляем новый тикет
-            return [...prevTickets, updatedTicket];
-          }
-        });
-
-        // Обновляем выбранный тикет, если он был обновлен
-        setSelectedTicket((prevSelectedTicket) =>
-          prevSelectedTicket && prevSelectedTicket._id === updatedTicket._id
-            ? updatedTicket
-            : prevSelectedTicket
-        );
+        if(updatedTicket.userId._id === userJwtInfo?.userInfo?.id) {
+          setTickets((prevTickets) => {
+            const ticketExists = prevTickets.some(ticket => ticket._id === updatedTicket._id);
+            if (ticketExists) {
+              return prevTickets.map((ticket) =>
+                ticket._id === updatedTicket._id ? updatedTicket : ticket
+              );
+            } else {
+              return [...prevTickets, updatedTicket];
+            }
+          });
+  
+          setSelectedTicket((prevSelectedTicket) =>
+            prevSelectedTicket && prevSelectedTicket._id === updatedTicket._id
+              ? updatedTicket
+              : prevSelectedTicket
+          );
+        }
       });
 
       newSocket.on("message_list:update", (messages: IMessage[]) => {
-        console.log(messages);
 
         setMessages((prevMessages) => [
           ...prevMessages,
@@ -93,20 +89,25 @@ const UserMain: FC = () => {
 
   useEffect(() => {
     if (socket && selectedTicketId) {
+      setMessages([]);
+  
       socket.emit("message:get", selectedTicketId);
-
+  
       const handleMessageUpdate = (newMessages: IMessage[]) => {
         setMessages((prevMessages) => [
-          ...prevMessages,
+          ...prevMessages.filter(
+            (msg) => msg.ticketId === selectedTicketId
+          ),
           ...newMessages.filter(
             (msg) =>
+              msg.ticketId === selectedTicketId &&
               !prevMessages.some((existingMsg) => existingMsg._id === msg._id)
           ),
         ]);
       };
-
+  
       socket.on("message_list:update", handleMessageUpdate);
-
+  
       return () => {
         socket.off("message_list:update", handleMessageUpdate);
       };
@@ -162,6 +163,10 @@ const UserMain: FC = () => {
     }
   };
 
+  const handleMessageRead = useCallback((messageId: string) => {
+    socket?.emit('message:read', messageId);
+  }, []);
+
   const handleCreateTicket = (data: { description: string }) => {
     socket?.emit("ticket:add", data);
   };
@@ -188,6 +193,8 @@ const UserMain: FC = () => {
             tickets={tickets}
             onClickTicket={handleClickTicket}
             role={userJwtInfo.userInfo?.role}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
           {selectedTicket ? (
             <ChatWindow
@@ -199,6 +206,7 @@ const UserMain: FC = () => {
               onCloseTicket={handleCloseTicket}
               selectedTicket={selectedTicket}
               onPinTicket={handlePinTicket}
+              onMessageRead={handleMessageRead}
               role={userJwtInfo.userInfo?.role}
             />
           ) : (

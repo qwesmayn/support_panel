@@ -18,42 +18,44 @@
     const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [socket, setSocket] = useState<Socket | null>(null);
+    const [searchQuery, setSearchQuery] = useState<string>("");
 
     useEffect(() => {
       if (userJwtInfo?.userInfo && !isLoading) {
-
+    
         const newSocket = io(import.meta.env.VITE_API_SOCKET_URL, {
           query: { token: userJwtInfo.userToken },
         });
-
-        if(!user) {
+    
+        if (!user) {
           dispatch(getMeAdmin(userJwtInfo.userInfo.id));
         }
-
+    
         newSocket.on("connect", () => {
           console.log("Socket connected");
           newSocket.emit("request:tickets");
         });
-
+    
         newSocket.on("ticket:all", (allTickets: ITicket[]) => {
           setTickets(allTickets);
         });
-
+    
         newSocket.on("ticket:update", (updatedTicket: ITicket) => {
-
+          
           setTickets((prevTickets) => {
             const updatedTickets = prevTickets.map((ticket) =>
               ticket._id === updatedTicket._id ? updatedTicket : ticket
             );
             return [...updatedTickets];
           });
+
           setSelectedTicket((prevSelectedTicket) =>
             prevSelectedTicket && prevSelectedTicket._id === updatedTicket._id
               ? updatedTicket
               : prevSelectedTicket
           );
         });
-
+    
         newSocket.on("message_list:update", (messages: IMessage[]) => {
           setMessages((prevMessages) => [
             ...prevMessages,
@@ -63,37 +65,44 @@
             ),
           ]);
         });
-
+    
         setSocket(newSocket);
-
+    
         return () => {
           newSocket.disconnect();
           console.log("Socket disconnected");
         };
       }
     }, []);
+    
 
     useEffect(() => {
       if (socket && selectedTicketId) {
+        setMessages([]);
+    
         socket.emit("message:get", selectedTicketId);
-
+    
         const handleMessageUpdate = (newMessages: IMessage[]) => {
           setMessages((prevMessages) => [
-            ...prevMessages,
+            ...prevMessages.filter(
+              (msg) => msg.ticketId === selectedTicketId 
+            ),
             ...newMessages.filter(
               (msg) =>
+                msg.ticketId === selectedTicketId &&
                 !prevMessages.some((existingMsg) => existingMsg._id === msg._id)
             ),
           ]);
         };
-
+    
         socket.on("message_list:update", handleMessageUpdate);
-
+    
         return () => {
           socket.off("message_list:update", handleMessageUpdate);
         };
       }
     }, [selectedTicketId, socket]);
+    
 
     const handleClickTicket = useCallback(
       (ticketId: string) => {
@@ -166,6 +175,8 @@
               tickets={tickets}
               onClickTicket={handleClickTicket}
               role={userJwtInfo.userInfo?.role}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
             />
             {selectedTicket && (
               <ChatWindow

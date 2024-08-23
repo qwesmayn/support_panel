@@ -18,6 +18,7 @@ interface ChatWindowProps {
   onSendFileMessage: (file: File) => void;
   onCloseTicket: (id: string) => void;
   onPinTicket: (id: string) => void;
+  onMessageRead: (messageId: string) => void;
   selectedTicket?: ITicket;
   selectedTicketId: string;
   login: string;
@@ -30,6 +31,7 @@ const ChatWindow: FC<ChatWindowProps> = ({
   onSendFileMessage,
   onCloseTicket,
   onPinTicket,
+  onMessageRead,
   selectedTicketId,
   selectedTicket,
   role
@@ -78,7 +80,7 @@ const ChatWindow: FC<ChatWindowProps> = ({
 
       {/* Message Window */}
       <div className="p-5 border-b border-[#1d1d1d] flex-grow overflow-y-auto">
-        <MessagesBlock messages={messages} />
+        <MessagesBlock messages={messages} onMessageRead={onMessageRead}/>
       </div>
 
       <div className="p-5 border-b border-[#1d1d1d]">
