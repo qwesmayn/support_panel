@@ -45,13 +45,16 @@ app.use("/api/user", routerUser);
 app.use("/api/ticket", routerTicket);
 
 app.use((req, res) => {
-  res
-    .status(404)
-    .json({
-      message:
-        "Welcome to the Support Panel Server! But this route - not found!",
-    });
+  let clientIp = req.headers['x-forwarded-for'];
+
+  res.status(404).json({
+    message: "Welcome to the Support Panel Server! But this route - not found!",
+    clientIp: clientIp,
+  });
+
+  console.log(`Client with IP ${clientIp} tried to access a non-existent route.`);
 });
+
 
 app.use(errorHandler);
 

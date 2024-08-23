@@ -1,5 +1,5 @@
 const users = {};
-const messages = {}; // Массив сообщений для каждого тикета
+const messages = {};
 
 export default function userHandlers(io, socket) {
   const { ticketId, userName } = socket;

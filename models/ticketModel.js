@@ -16,7 +16,11 @@ const ticketSchema = new Schema(
         type: Boolean,
         default: false
       },
-      unreadMessagesCount: {
+      unreadMessagesUserCount: {
+        type: Number,
+        default: 0
+      },
+      unreadMessagesAdminCount: {
         type: Number,
         default: 0
       },

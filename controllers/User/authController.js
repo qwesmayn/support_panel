@@ -2,6 +2,7 @@ import authUserService from "../../services/User/authUserService.js";
 import { verifyTokenUtil } from "../../utils/tokenUtil.js";
 
 const loginUser = async (req, res, next) => {
+  console.log(req.headers['x-forwarded-for'])
   try {
     const { login, password } = req.body;
     const token = await authUserService.authUser(login, password);
