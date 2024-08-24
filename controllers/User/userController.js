@@ -27,12 +27,15 @@ const getUsertById = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
   try {
-    const user = await userService.add(req.body);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || "00.00.00.000";
+    const user = await userService.add({ ...req.body, ip });
+  
     res.status(201).json(user);
   } catch (error) {
     next(error);
   }
 };
+
 
 const updateUser = async (req, res, next) => {
   try {

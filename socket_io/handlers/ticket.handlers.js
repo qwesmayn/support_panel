@@ -31,7 +31,7 @@ export default function ticketHandlers(io, socket) {
     try {
       const newTicket = await Ticket.create({
         userId: socket.user.id,
-        unreadMessagesCount : 1
+        unreadMessagesUserCount : 1
       });
 
         const newMessage = {
@@ -65,11 +65,25 @@ export default function ticketHandlers(io, socket) {
         { isPinned: true },
         { new: true }
       ).populate("userId messages");
-      io.emit("ticket:update", ticket); // Уведомляем всех клиентов об изменении тикета
+      io.emit("ticket:update", ticket);
     } catch (error) {
       console.error("Error pinning ticket:", error);
     }
   });
+
+  socket.on("ticket:unpin", async (ticketId) => {
+    try {
+      const ticket = await Ticket.findByIdAndUpdate(
+        ticketId,
+        { isPinned: false },
+        { new: true }
+      ).populate("userId messages");
+      io.emit("ticket:update", ticket);
+    } catch (error) {
+      console.error("Error unpinning ticket:", error);
+    }
+  });
+  
 
   socket.on("ticket:close", async (ticketId) => {
     try {

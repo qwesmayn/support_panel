@@ -1,6 +1,17 @@
 import bcrypt from 'bcryptjs';
 import User from '../../models/userModel.js';
 import { generateToken } from '../../utils/tokenUtil.js';
+import axios from 'axios';
+
+const getCountryByIp = async (ip) => {
+  try {
+    const response = await axios.get(`https://get.geojs.io/v1/ip/country/${ip}.json`);
+    return response.data.country;
+  } catch (error) {
+    console.error('Error fetching country by IP:', error.message);
+    return 'Unknown';
+  }
+};
 
 // Получение всех
 const findAll = async () => {
@@ -23,6 +34,9 @@ const findById = async (id) => {
 // Добавление нового
 const add = async (userData) => {
   const hashedPassword = await bcrypt.hash(userData.password, 12);
+  const country = await getCountryByIp(userData.ip);
+
+  userData.country = country;
   userData.password = hashedPassword;
   try {
     const user = new User(userData);

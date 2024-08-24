@@ -38,6 +38,24 @@ export const verifyTokenAdmin = verifyToken(['admin']);
 
 export const verifyTokenUser = verifyToken();
 
+export const verifyTokenUniversal = (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ message: 'A token is required for authentication' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, secureConfig.tokenSecret);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired, please log in again' });
+    }
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};
+
 export const verifyTokenUtil = (token) => {
   try {
     return jwt.verify(token, secureConfig.tokenSecret);

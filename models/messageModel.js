@@ -5,11 +5,6 @@ const { Schema } = mongoose;
 
 const messageSchema = new Schema(
   {
-    messageId: {
-      type: String,
-      required: true,
-      unique: true
-    },
     messageType: {
       type: String,
       required: true

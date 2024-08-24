@@ -1,8 +1,6 @@
 import errorHandler from '../../middlewares/errorHandler.js';
 import Message from '../../models/messageModel.js';
 import Ticket from '../../models/ticketModel.js';
-import { removeFile } from '../../utils/file.js';
-import upload from '../../utils/upload.js';
 
 const messages = {};
 
@@ -24,42 +22,6 @@ export default function messageHandlers(io, socket) {
     }
   });
 
-
-  socket.on('message:file', (formData, message) => {
-    upload.single('file')(formData, null, async (err) => {
-      if (err) {
-        console.error('Upload error:', err);
-        return;
-      }
-
-      console.log('FormData:', formData);
-      console.log('File:', formData.file);
-  
-      try {
-        const filePath = `/files/${message.ticketId}/${formData.file.filename}`;
-        const newMessage = new Message({
-          ...message,
-          textOrPathToFile: filePath,
-          messageType: 'file',
-          createdAt: new Date(),
-        });
-  
-        await newMessage.save();
-        messages[message.ticketId].push(newMessage);
-  
-        await Ticket.updateOne(
-          { _id: message.ticketId },
-          { $inc: { unreadMessagesCount: 1 } }
-        );
-        updateMessageList();
-      } catch (error) {
-        console.error(error);
-      }
-    });
-  });
-  
-
-
   socket.on('message:add', async (message) => {
     try {
       if (typeof message !== 'object' || message === null) {
@@ -70,13 +32,14 @@ export default function messageHandlers(io, socket) {
       message.isRead = false;
   
       const newMessage = await Message.create(message);
-      console.log('Message saved:', newMessage);
-
+  
+      const updateField = message.senderType === 'admin' ? 'unreadMessagesAdminCount' : 'unreadMessagesUserCount';
+  
       const updatedTicket = await Ticket.findByIdAndUpdate(
         message.ticketId,
         {
           $push: { messages: newMessage },
-          $inc: { unreadMessagesCount: 1 },
+          $inc: { [updateField]: 1 },  
         },
         { new: true }
       ).populate("userId messages");
@@ -85,9 +48,9 @@ export default function messageHandlers(io, socket) {
         messages[ticketId] = [];
       }
       messages[ticketId].push(newMessage);
-
+  
       updateMessageList();
-
+  
       io.emit('ticket:update', updatedTicket);
     } catch (error) {
       console.error(error);
@@ -95,25 +58,39 @@ export default function messageHandlers(io, socket) {
   });
   
   
-
+  
   socket.on('message:read', async (messageId) => {
     try {
+      console.log("Роль - ", socket.role);
       const message = await Message.findById(messageId);
+  
       if (message && !message.isRead) {
         message.isRead = true;
         await message.save();
-
-        await Ticket.updateOne(
-          { _id: message.ticketId },
-          { $inc: { unreadMessagesCount: -1 } }
-        );
-
-        updateMessageList();
+  
+        const updateField = socket.role === 'admin' ? 'unreadMessagesUserCount' : 'unreadMessagesAdminCount';
+  
+        // Обновляем тикет
+        const updatedTicket = await Ticket.findByIdAndUpdate(
+          message.ticketId,
+          { $inc: { [updateField]: -1 } },
+          { new: true }
+        ).populate("userId messages");
+  
+        if (updatedTicket) {
+          // Отправляем обновленный тикет всем клиентам
+          io.emit('ticket:update', updatedTicket);
+          console.log("Обновленный тикет: ", updatedTicket);
+        }
       }
     } catch (error) {
-      errorHandler(error);
+      console.error("Ошибка при обработке события message:read: ", error);
     }
   });
+  
+  
+  
+  
 
   socket.on('message:remove', async (message) => {
     try {
