@@ -1,6 +1,6 @@
 import { FC, useState, useEffect } from "react";
 import ChatRow from "../ChatRow/ChatRow";
-import { Headphones, Settings } from 'lucide-react';
+import { Headphones, Settings } from "lucide-react";
 import { IAdminUser } from "../../../models/IAdminUser";
 import { ITicket } from "../../../models/ITicket";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -10,22 +10,27 @@ interface SidebarProps {
   user: IAdminUser | null;
   tickets: ITicket[] | null;
   onClickTicket: (ticketId: string) => void;
-  role: string;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
-const Sidebar: FC<SidebarProps> = ({ user, tickets, onClickTicket, role, searchQuery, onSearchChange }) => {
+const Sidebar: FC<SidebarProps> = ({
+  user,
+  tickets,
+  onClickTicket,
+  searchQuery,
+  onSearchChange,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const userInfo = useUserInfo()
+  const userInfo = useUserInfo();
 
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [activeFilter, setActiveFilter] = useState<string>("all");
   const [filteredTickets, setFilteredTickets] = useState<ITicket[]>([]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const filter = params.get('filter') || 'all';
+    const filter = params.get("filter") || "all";
     setActiveFilter(filter);
   }, [location.search]);
 
@@ -34,14 +39,18 @@ const Sidebar: FC<SidebarProps> = ({ user, tickets, onClickTicket, role, searchQ
 
     let filtered = tickets;
     switch (activeFilter) {
-      case 'active':
-        filtered = tickets.filter(ticket => ticket.status != 'close');
+      case "active":
+        filtered = tickets.filter((ticket) => ticket.status != "closed");
         break;
-      case 'new':
-        filtered = tickets.filter(ticket => ticket.unreadMessagesCount > 0);
+      case "new":
+        filtered = tickets.filter((ticket) =>
+          userInfo.userInfo?.role === "admin"
+            ? ticket.unreadMessagesUserCount > 0
+            : ticket.unreadMessagesAdminCount > 0
+        );
         break;
-      case 'closed':
-        filtered = tickets.filter(ticket => ticket.status === 'closed');
+      case "closed":
+        filtered = tickets.filter((ticket) => ticket.status === "closed");
         break;
       default:
         filtered = tickets;
@@ -52,13 +61,15 @@ const Sidebar: FC<SidebarProps> = ({ user, tickets, onClickTicket, role, searchQ
       return text.toLowerCase().includes(searchQuery.toLowerCase());
     };
 
-    const finalFilteredTickets = filtered.filter(ticket => {
-      const userLogin = ticket.userId?.login ?? '';
+    const finalFilteredTickets = filtered.filter((ticket) => {
+      const userLogin = ticket.userId?.login ?? "";
       return matchesSearchQuery(userLogin);
     });
 
-    if(userInfo.userInfo?.role === "admin"){
-      finalFilteredTickets.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+    if (userInfo.userInfo?.role === "admin") {
+      finalFilteredTickets.sort(
+        (a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0)
+      );
     }
 
     setFilteredTickets(finalFilteredTickets);
@@ -93,36 +104,48 @@ const Sidebar: FC<SidebarProps> = ({ user, tickets, onClickTicket, role, searchQ
             <ul className="flex items-center justify-between">
               <li>
                 <button
-                  onClick={() => handleClick('all')}
-                  className={`pb-[21.5px] px-2 transition-all duration-300 border-b-2 ${activeFilter === 'all' ? 'border-white' : 'border-transparent'}`}
+                  onClick={() => handleClick("all")}
+                  className={`pb-[21.5px] px-2 transition-all duration-300 border-b-2 ${
+                    activeFilter === "all"
+                      ? "border-white"
+                      : "border-transparent"
+                  }`}
                 >
                   Все
                 </button>
               </li>
-              {role === "admin" && (
-                <>
-                  <li>
-                    <button
-                      onClick={() => handleClick('active')}
-                      className={`pb-[21.5px] px-2 transition-all duration-300 border-b-2 ${activeFilter === 'active' ? 'border-white' : 'border-transparent'}`}
-                    >
-                      Активные
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => handleClick('new')}
-                      className={`pb-[21.5px] px-2 transition-all duration-300 border-b-2 ${activeFilter === 'new' ? 'border-white' : 'border-transparent'}`}
-                    >
-                      Новые
-                    </button>
-                  </li>
-                </>
-              )}
               <li>
                 <button
-                  onClick={() => handleClick('closed')}
-                  className={`pb-[21.5px] px-2 transition-all duration-300 border-b-2 ${activeFilter === 'closed' ? 'border-white' : 'border-transparent'}`}
+                  onClick={() => handleClick("active")}
+                  className={`pb-[21.5px] px-2 transition-all duration-300 border-b-2 ${
+                    activeFilter === "active"
+                      ? "border-white"
+                      : "border-transparent"
+                  }`}
+                >
+                  Активные
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => handleClick("new")}
+                  className={`pb-[21.5px] px-2 transition-all duration-300 border-b-2 ${
+                    activeFilter === "new"
+                      ? "border-white"
+                      : "border-transparent"
+                  }`}
+                >
+                  Новые
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => handleClick("closed")}
+                  className={`pb-[21.5px] px-2 transition-all duration-300 border-b-2 ${
+                    activeFilter === "closed"
+                      ? "border-white"
+                      : "border-transparent"
+                  }`}
                 >
                   Закрытые
                 </button>
@@ -135,14 +158,22 @@ const Sidebar: FC<SidebarProps> = ({ user, tickets, onClickTicket, role, searchQ
       <div className="flex-grow overflow-y-auto">
         <div className="flex flex-col gap-1">
           {filteredTickets.map((ticket, index) => (
-            <ChatRow key={index} ticket={ticket} onClickTicket={onClickTicket} />
+            <ChatRow
+              key={index}
+              ticket={ticket}
+              onClickTicket={onClickTicket}
+            />
           ))}
         </div>
       </div>
 
       <div className="flex items-center justify-between p-5 border-t border-[#1d1d1d]">
         <div className="flex items-center">
-          <img src={user?.avatar || "https://placehold.co/45"} alt="Avatar" className="rounded-full mr-3" />
+          <img
+            src={user?.avatar || "https://placehold.co/45"}
+            alt="Avatar"
+            className="rounded-full mr-3"
+          />
           <p>{user?.login || "Username"}</p>
         </div>
         <div className="flex items-center gap-5">

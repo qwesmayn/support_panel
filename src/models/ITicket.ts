@@ -8,7 +8,8 @@ export interface ITicket {
     title: string
     status: string
     isPinned: boolean
-    unreadMessagesCount: number
+    unreadMessagesUserCount: number
+    unreadMessagesAdminCount: number
     userId: IUser
     assignedAdminId: IAdminUser | null
     messages: IMessage[]

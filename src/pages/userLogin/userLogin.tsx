@@ -45,29 +45,11 @@ const getBrowserInfo = () => {
     return { browserName, version };
   };
 
-const getIpAddress = async () => {
-  try {
-    const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json();
-    return data.ip;
-  } catch (error) {
-    console.error("Failed to get IP address", error);
-    return '';
-  }
-};
-
 const uLogin: FC = () => {
     const [isLoginMode, setIsLoginMode] = useState(true);
-    const [ip, setIp] = useState<string>('');
     const [browserVersion, setBrowserVersion] = useState<string>('');
   
     useEffect(() => {
-      const fetchIp = async () => {
-        const ipAddress = await getIpAddress();
-        setIp(ipAddress);
-      };
-  
-      fetchIp();
       const { version } = getBrowserInfo();
       setBrowserVersion(version);
     }, []);
@@ -91,7 +73,7 @@ const uLogin: FC = () => {
           login: data.login, 
           password: data.password,
           country: data.country || 'RU',
-          ip: ip, 
+          ip: "", 
           chromeVersion: browserVersion || '',
           avatar: data.avatar || ''
         }));

@@ -1,10 +1,4 @@
-import {
-  Chrome,
-  Earth,
-  Flag,
-  Lock,
-  Pin,
-} from "lucide-react";
+import { ArrowLeft, Chrome, Earth, Flag, Lock, Pin, PinOff } from "lucide-react";
 import { FC } from "react";
 import MessagesBlock from "./MessagesBlock/MessagesBlock";
 import SendMessageBlock from "./SendMessageBlock/SendMessageBlock";
@@ -18,11 +12,13 @@ interface ChatWindowProps {
   onSendFileMessage: (file: File) => void;
   onCloseTicket: (id: string) => void;
   onPinTicket: (id: string) => void;
+  onUnPinTicket?: (id: string) => void;
   onMessageRead: (messageId: string) => void;
   selectedTicket?: ITicket;
   selectedTicketId: string;
   login: string;
-  role : string;
+  role: string;
+  onExitTicket?: () => void;
 }
 
 const ChatWindow: FC<ChatWindowProps> = ({
@@ -31,62 +27,102 @@ const ChatWindow: FC<ChatWindowProps> = ({
   onSendFileMessage,
   onCloseTicket,
   onPinTicket,
+  onUnPinTicket,
   onMessageRead,
   selectedTicketId,
   selectedTicket,
-  role
+  role,
+  onExitTicket,
 }) => {
+
+  const handleUnPin = () => {
+    if (onUnPinTicket) {
+      onUnPinTicket(selectedTicketId);
+    }
+  };
+
+  const handleExit = () => {
+    if (onExitTicket) {
+      onExitTicket();
+    }
+  };
 
   return (
     <div className="h-full text-white border border-[#1d1d1d] w-full rounded-2xl flex flex-col">
       {/* Chat Header */}
-      <div className={classNames("border-b py-[15px] px-5 border-[#1d1d1d] flex items-center justify-between", role === "user" && "py-[36px]")}>
-        { role === "admin" && <div className=" flex items-center gap-3">
-          <div>
-            <p>{selectedTicket?.userId.login}</p>
+      <div
+        className={classNames(
+          "border-b py-[15px] px-5 border-[#1d1d1d] flex items-center justify-between",
+          role === "user" && "py-[16px]"
+        )}
+      >
+        {role === "admin" && (
+          <div className=" flex items-center gap-3">
+            <div>
+              <p>{selectedTicket?.userId.login}</p>
+            </div>
+            <div className="bg-[#1b1b1b] max-w-max p-2 rounded-2xl flex items-center gap-2">
+              <Flag size={20} color="#6e6e6e" />
+              <p className="text-[#6e6e6e]">{selectedTicket?.userId.country}</p>
+            </div>
+            <div className="bg-[#1b1b1b] max-w-max p-2 rounded-2xl flex items-center gap-2">
+              <Earth size={20} color="#6e6e6e" />
+              <p className="text-[#6e6e6e]">{selectedTicket?.userId.ip}</p>
+            </div>
+            <div className="bg-[#1b1b1b] max-w-max p-2 rounded-2xl flex items-center gap-2">
+              <Chrome size={20} color="#6e6e6e" />
+              <p className="text-[#6e6e6e]">
+                {selectedTicket?.userId.chromeVersion}
+              </p>
+            </div>
           </div>
-          <div className="bg-[#1b1b1b] max-w-max p-2 rounded-2xl flex items-center gap-2">
-            <Flag size={20} color="#6e6e6e" />
-            <p className="text-[#6e6e6e]">{selectedTicket?.userId.country}</p>
+        )}
+        {role === "admin" && (
+          <div className="flex items-center gap-5">
+            <div className="h-[20px]">
+            {selectedTicket?.isPinned ? (
+                <button onClick={handleUnPin}>
+                  <PinOff size={20} className="transform rotate-45" />
+                </button>
+              ) : (
+                <button onClick={() => onPinTicket(selectedTicketId)}>
+                  <Pin size={20} className="transform rotate-45" />
+                </button>
+              )}
+            </div>
+            <div>
+              <button
+                disabled={selectedTicket?.status === "closed"}
+                onClick={() => onCloseTicket(selectedTicketId)}
+                className="flex items-center gap-4 py-2 px-5 border border-white rounded-full transition-all duration-500 hover:bg-white hover:text-[#1d1d1d]"
+              >
+                <p>Закрыть тикет</p>
+                <Lock size={20} />
+              </button>
+            </div>
           </div>
-          <div className="bg-[#1b1b1b] max-w-max p-2 rounded-2xl flex items-center gap-2">
-            <Earth size={20} color="#6e6e6e" />
-            <p className="text-[#6e6e6e]">{selectedTicket?.userId.ip}</p>
-          </div>
-          <div className="bg-[#1b1b1b] max-w-max p-2 rounded-2xl flex items-center gap-2">
-            <Chrome size={20} color="#6e6e6e" />
-            <p className="text-[#6e6e6e]">{selectedTicket?.userId.chromeVersion}</p>
-          </div>
-        </div>
-}
-        { role === "admin" &&<div className="flex items-center gap-5">
-          <div className="h-[20px]">
-            <button onClick={() => onPinTicket(selectedTicketId)}>
-              <Pin size={20} className="transform rotate-45" />
-            </button>
-          </div>
-          <div>
-            <button
-            disabled = {selectedTicket?.status === "closed"}
-              onClick={() => onCloseTicket(selectedTicketId)}
-              className="flex items-center gap-4 py-2 px-5 border border-white rounded-full transition-all duration-500 hover:bg-white hover:text-[#1d1d1d]"
-            >
-              <p>Закрыть тикет</p>
-              <Lock size={20} />
-            </button>
-          </div>
-        </div>}
+        )}
+
+        {role === "user" && (
+          <button
+            onClick={handleExit}
+            className="flex items-center gap-2 p-2 rounded-full transition-all duration-300 bg-[#1b1b1b] hover:bg-[#333]"
+          >
+            <ArrowLeft size={20} color="#6e6e6e" />
+            <span className="text-[#6e6e6e]">Назад</span>
+          </button>
+        )}
       </div>
 
       {/* Message Window */}
       <div className="p-5 border-b border-[#1d1d1d] flex-grow overflow-y-auto">
-        <MessagesBlock messages={messages} onMessageRead={onMessageRead}/>
+        <MessagesBlock messages={messages} onMessageRead={onMessageRead} />
       </div>
 
       <div className="p-5 border-b border-[#1d1d1d]">
         <SendMessageBlock
           onSendMessage={onSendMessage}
-          onSendFileMessage = {onSendFileMessage}
+          onSendFileMessage={onSendFileMessage}
           isDisabled={selectedTicket?.status === "closed"}
         />
       </div>

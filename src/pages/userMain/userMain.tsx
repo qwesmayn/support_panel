@@ -7,8 +7,8 @@ import { ITicket } from "../../models/ITicket";
 import ChatWindow from "../../components/shared/ChatWindow/ChatWindow";
 import Sidebar from "../../components/shared/Sidebar/Sidebar";
 import { getMeUser } from "../../store/action_creators/actionCreators";
-import { nanoid } from "nanoid";
 import CreateTicketModal from "../../components/shared/Modals/CreateTicketModal";
+import { $authHost } from "../../http";
 
 const UserMain: FC = () => {
   const userJwtInfo = useUserInfo();
@@ -47,18 +47,22 @@ const UserMain: FC = () => {
       });
 
       newSocket.on("ticket:update", (updatedTicket: ITicket) => {
-        if(updatedTicket.userId._id === userJwtInfo?.userInfo?.id) {
+      
+        if (updatedTicket.userId._id === userJwtInfo?.userInfo?.id) {
           setTickets((prevTickets) => {
             const ticketExists = prevTickets.some(ticket => ticket._id === updatedTicket._id);
+      
             if (ticketExists) {
-              return prevTickets.map((ticket) =>
+              const updatedTickets = prevTickets.map((ticket) =>
                 ticket._id === updatedTicket._id ? updatedTicket : ticket
               );
+              return updatedTickets;
             } else {
-              return [...prevTickets, updatedTicket];
+              const newTickets = [...prevTickets, updatedTicket];
+              return newTickets;
             }
           });
-  
+      
           setSelectedTicket((prevSelectedTicket) =>
             prevSelectedTicket && prevSelectedTicket._id === updatedTicket._id
               ? updatedTicket
@@ -67,8 +71,7 @@ const UserMain: FC = () => {
         }
       });
 
-      newSocket.on("message_list:update", (messages: IMessage[]) => {
-
+      newSocket.on("message_list:update", (messages: IMessage[]) => { 
         setMessages((prevMessages) => [
           ...prevMessages,
           ...messages.filter(
@@ -82,10 +85,9 @@ const UserMain: FC = () => {
 
       return () => {
         newSocket.disconnect();
-        console.log("Socket disconnected");
       };
     }
-  }, []);
+  }, [dispatch, user]);
 
   useEffect(() => {
     if (socket && selectedTicketId) {
@@ -130,7 +132,6 @@ const UserMain: FC = () => {
     if (message.trim() && userJwtInfo.userInfo && selectedTicketId) {
       const messageObject = {
         textOrPathToFile: message,
-        messageId: nanoid(),
         messageType: "text",
         ticketId: selectedTicketId,
         userId: userJwtInfo.userInfo?.id,
@@ -141,31 +142,35 @@ const UserMain: FC = () => {
     }
   };
 
-  const handleSendFileMessage = (file: File) => {
+  const handleSendFileMessage = async (file: File) => {
     if (userJwtInfo.userInfo && selectedTicketId) {
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        const fileArrayBuffer = reader.result as ArrayBuffer;
-        socket?.emit("message:file", {
-          fileData: Array.from(new Uint8Array(fileArrayBuffer)),
-          fileName: file.name,
-          fileType: file.type,
-          messageId: nanoid(),
-          ticketId: selectedTicketId,
-          userId: userJwtInfo.userInfo?.id,
-          senderType: userJwtInfo.userInfo?.role,
-          login: user?.login || "",
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('ticketId', selectedTicketId);
+      formData.append('userId', userJwtInfo.userInfo?.id || '');
+      formData.append('senderType', userJwtInfo.userInfo?.role || '');
+      formData.append('login', user?.login || '');
+  
+      try {
+        const response = await $authHost.post('/message/send', formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
-      };
-
-      reader.readAsArrayBuffer(file);
+        console.log('File uploaded successfully:', response.data);
+      } catch (error) {
+        console.error('Error sending file:', error);
+      }
+    } else {
+      console.error('User information or selected ticket ID is missing.');
     }
   };
+  
 
   const handleMessageRead = useCallback((messageId: string) => {
     socket?.emit('message:read', messageId);
-  }, []);
+  }, [socket]);
+  
 
   const handleCreateTicket = (data: { description: string }) => {
     socket?.emit("ticket:add", data);
@@ -173,6 +178,11 @@ const UserMain: FC = () => {
 
   const handleCloseTicket = (id: string) => {
     socket?.emit("ticket:close", id);
+  };
+
+  const handleExitTicket = () => {
+    setSelectedTicketId(null);
+    setSelectedTicket(null);
   };
 
   const handlePinTicket = (id: string) => {
@@ -192,11 +202,10 @@ const UserMain: FC = () => {
             user={user}
             tickets={tickets}
             onClickTicket={handleClickTicket}
-            role={userJwtInfo.userInfo?.role}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
-          {selectedTicket ? (
+          {selectedTicket && userJwtInfo.userInfo?.role ? (
             <ChatWindow
               messages={messages}
               onSendMessage={handleSendMessage}
@@ -207,6 +216,7 @@ const UserMain: FC = () => {
               selectedTicket={selectedTicket}
               onPinTicket={handlePinTicket}
               onMessageRead={handleMessageRead}
+              onExitTicket={handleExitTicket}
               role={userJwtInfo.userInfo?.role}
             />
           ) : (

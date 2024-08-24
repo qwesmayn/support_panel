@@ -6,14 +6,16 @@ import { format } from "date-fns";
 import { useUserInfo } from "../../../hooks/useUserInfo";
 
 interface ChatRowProps {
-  ticket: ITicket
-  onClickTicket: (ticketId: string) => void
+  ticket: ITicket;
+  onClickTicket: (ticketId: string) => void;
 }
 
 const ChatRow: FC<ChatRowProps> = ({ ticket, onClickTicket }) => {
   const userJwtInfo = useUserInfo();
+  const userId = userJwtInfo.userInfo?.id;
 
   const lastMessage = ticket.messages.length > 0 ? ticket.messages[ticket.messages.length - 1] : null;
+  
 
   const lastMessageTime = lastMessage
     ? (() => {
@@ -22,18 +24,31 @@ const ChatRow: FC<ChatRowProps> = ({ ticket, onClickTicket }) => {
       })()
     : "";
 
+  const isAdmin = userJwtInfo.userInfo?.role === "admin";
+  const isTicketOwner = ticket.userId._id === userId;
+
+  const hasUnreadMessages =
+    isAdmin && !isTicketOwner
+      ? ticket.unreadMessagesUserCount > 0
+      : !isAdmin && isTicketOwner
+      ? ticket.unreadMessagesAdminCount > 0
+      : false;
+
   return (
-    <div onClick={() => onClickTicket(ticket._id)} className={classNames("px-3", ticket.isPinned && ticket.userId._id != userJwtInfo.userInfo?.id && "bg-[#1b1b1b]")}>
+    <div
+      onClick={() => onClickTicket(ticket._id)}
+      className={classNames("px-3", ticket.isPinned && !isTicketOwner && "bg-[#1b1b1b]")}
+    >
       <div
         className={classNames(
           "flex flex-col p-4 cursor-pointer gap-2 transition-all duration-500 hover:bg-[#1b1b1b] rounded-2xl",
-          ticket.unreadMessagesCount > 0 && ticket.status !== "closed" && "bg-[#1b1b1b]"
+          hasUnreadMessages && ticket.status !== "closed" && "bg-[#1b1b1b]"
         )}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p>{ticket.userId.login}</p>
-            {ticket.isPinned && ticket.userId._id != userJwtInfo.userInfo?.id && <Pin size={18} className="transform rotate-45" />}
+            {ticket.isPinned && !isTicketOwner && <Pin size={18} className="transform rotate-45" />}
           </div>
           <div>
             <p className="text-[#6e6e6e]">{lastMessageTime}</p>
@@ -41,11 +56,10 @@ const ChatRow: FC<ChatRowProps> = ({ ticket, onClickTicket }) => {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[#6e6e6e]">{lastMessage ? lastMessage.textOrPathToFile : "No messages yet"}</p>
+            <p className="text-[#6e6e6e]">{lastMessage?.messageType === "text" ? lastMessage.textOrPathToFile ? lastMessage.textOrPathToFile : "No messages yet" : "[Image]"}</p>
           </div>
-          {ticket.unreadMessagesCount > 0 && ticket.status !== "closed" && (
-            <div className="min-w-2 min-h-2 bg-white rounded-full text-black text-xs">
-            </div>
+          {hasUnreadMessages && ticket.status !== "closed" && (
+            <div className="min-w-2 min-h-2 bg-white rounded-full text-black text-xs"></div>
           )}
           {ticket.status === "closed" && <Lock size={18} />}
         </div>
@@ -53,7 +67,5 @@ const ChatRow: FC<ChatRowProps> = ({ ticket, onClickTicket }) => {
     </div>
   );
 };
-
-
 
 export default ChatRow;

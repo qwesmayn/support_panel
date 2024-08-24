@@ -7,7 +7,7 @@
   import { IMessage } from "../../models/IMessage";
   import { ITicket } from "../../models/ITicket";
   import { getMeAdmin } from "../../store/action_creators/actionCreators";
-  import { nanoid } from "nanoid";
+import { $authHost } from "../../http";
 
   const Main: FC = () => {
     const userJwtInfo = useUserInfo();
@@ -24,7 +24,12 @@
       if (userJwtInfo?.userInfo && !isLoading) {
     
         const newSocket = io(import.meta.env.VITE_API_SOCKET_URL, {
-          query: { token: userJwtInfo.userToken },
+          query: {
+            token: userJwtInfo.userToken,
+            role: userJwtInfo.userInfo.role,
+            userId: userJwtInfo.userInfo.id,
+            login : user?.login
+          },
         });
     
         if (!user) {
@@ -32,7 +37,6 @@
         }
     
         newSocket.on("connect", () => {
-          console.log("Socket connected");
           newSocket.emit("request:tickets");
         });
     
@@ -43,10 +47,17 @@
         newSocket.on("ticket:update", (updatedTicket: ITicket) => {
           
           setTickets((prevTickets) => {
-            const updatedTickets = prevTickets.map((ticket) =>
-              ticket._id === updatedTicket._id ? updatedTicket : ticket
-            );
-            return [...updatedTickets];
+            const ticketExists = prevTickets.some(ticket => ticket._id === updatedTicket._id);
+      
+            if (ticketExists) {
+              const updatedTickets = prevTickets.map((ticket) =>
+                ticket._id === updatedTicket._id ? updatedTicket : ticket
+              );
+              return updatedTickets;
+            } else {
+              const newTickets = [...prevTickets, updatedTicket];
+              return newTickets;
+            }
           });
 
           setSelectedTicket((prevSelectedTicket) =>
@@ -70,7 +81,6 @@
     
         return () => {
           newSocket.disconnect();
-          console.log("Socket disconnected");
         };
       }
     }, []);
@@ -120,7 +130,6 @@
       if (message.trim() && userJwtInfo.userInfo && selectedTicketId) {
         const messageObject = {
           textOrPathToFile: message,
-          messageId: nanoid(),
           messageType: "text",
           ticketId: selectedTicketId,
           userId: userJwtInfo.userInfo?.id,
@@ -131,27 +140,33 @@
       }
     };
 
-    const handleSendFileMessage = (file: File) => {
+    const handleSendFileMessage = async (file: File) => {
       if (userJwtInfo.userInfo && selectedTicketId) {
-        const reader = new FileReader();
-  
-        reader.onload = () => {
-          const fileArrayBuffer = reader.result as ArrayBuffer;
-          socket?.emit("message:file", {
-            fileData: Array.from(new Uint8Array(fileArrayBuffer)),
-            fileName: file.name,
-            fileType: file.type,
-            messageId: nanoid(),
-            ticketId: selectedTicketId,
-            userId: userJwtInfo.userInfo?.id,
-            senderType: userJwtInfo.userInfo?.role,
-            login: user?.login || "",
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('ticketId', selectedTicketId);
+        formData.append('userId', userJwtInfo.userInfo?.id || '');
+        formData.append('senderType', userJwtInfo.userInfo?.role || '');
+        formData.append('login', user?.login || '');
+    
+        try {
+          const response = await $authHost.post('/message/send', formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
           });
-        };
-  
-        reader.readAsArrayBuffer(file);
+          console.log('File uploaded successfully:', response.data);
+        } catch (error) {
+          console.error('Error sending file:', error);
+        }
+      } else {
+        console.error('User information or selected ticket ID is missing.');
       }
-    };  
+    };
+
+    const handleMessageRead = useCallback((messageId: string) => {
+      socket?.emit('message:read', messageId);
+    }, [socket]);
 
     const handleCloseTicket = (id: string) => {
       socket?.emit("ticket:close", id);
@@ -159,6 +174,10 @@
 
     const handlePinTicket = (id: string) => {
       socket?.emit("ticket:pin", id);
+    };
+
+    const handleUnPinTicket = (id: string) => {
+      socket?.emit("ticket:unpin", id);
     };
 
     const ticketIdForChatWindow = selectedTicketId ?? "";
@@ -174,11 +193,10 @@
               user={user}
               tickets={tickets}
               onClickTicket={handleClickTicket}
-              role={userJwtInfo.userInfo?.role}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
             />
-            {selectedTicket && (
+            {selectedTicket && userJwtInfo.userInfo?.role && (
               <ChatWindow
                 messages={messages}
                 onSendMessage={handleSendMessage}
@@ -188,6 +206,8 @@
                 onCloseTicket={handleCloseTicket}
                 selectedTicket={selectedTicket}
                 onPinTicket={handlePinTicket}
+                onMessageRead={handleMessageRead}
+                onUnPinTicket={handleUnPinTicket}
                 role={userJwtInfo.userInfo?.role}
               />
             )}
